@@ -1,0 +1,13 @@
+appId: com.stock.management.font
+productName: Stock Management Font
+directories:
+  output: release
+files:
+  - dist/**/*
+  - dist-electron/**/*
+win:
+  target: nsis
+  icon: src/assets/icon.jpg
+mac:
+  target: dmg
+  icon: src/assets/icon.jpg
