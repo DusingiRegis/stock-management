@@ -7,7 +7,7 @@ files:
   - dist-electron/**/*
 win:
   target: nsis
-  icon: src/assets/icon.jpg
+  icon: src/assets/logo.jpg
 mac:
   target: dmg
-  icon: src/assets/icon.jpg
+  icon: src/assets/logo.jpg

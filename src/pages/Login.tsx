@@ -4,7 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { LoadingSpinner } from "../components/LoadingSpinner";
-import logoSrc from "../assets/icon.jpg";
+import logoSrc from "../assets/logo.jpg";
 
 export function Login() {
   const [username, setUsername] = useState("");

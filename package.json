@@ -41,8 +41,8 @@
     "vite-plugin-electron-renderer": "^0.14.5"
   },
   "build": {
-    "appId": "com.inventory.app",
-    "productName": "Inventory Management System",
+    "appId": "com.stock.management.font",
+    "productName": "Stock Management Font",
     "directories": {
       "output": "release"
     },
@@ -51,7 +51,12 @@
       "dist-electron/**/*"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "src/assets/logo.jpg"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "src/assets/logo.jpg"
     }
   }
 }

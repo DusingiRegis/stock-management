@@ -18,7 +18,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import type { UserRole } from "../types";
-import logoSrc from "../assets/icon.jpg";
+import logoSrc from "../assets/logo.jpg";
 
 interface MenuItem {
   path: string;
