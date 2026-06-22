@@ -18,7 +18,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import type { UserRole } from "../types";
-import logoSrc from "../assets/logo.jpg";
+import logoSrc from "../assets/android-chrome-512x512.png";
 
 interface MenuItem {
   path: string;

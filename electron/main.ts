@@ -20,7 +20,7 @@ function createWindow() {
     height: 900,
     minWidth: 1200,
     minHeight: 700,
-    icon: path.join(__dirname, "../src/assets/logo.jpg"),
+    icon: path.join(__dirname, "../src/assets/android-chrome-512x512.png"),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),

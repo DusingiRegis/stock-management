@@ -52,11 +52,11 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "src/assets/logo.jpg"
+      "icon": "src/assets/android-chrome-512x512.png"
     },
     "mac": {
       "target": "dmg",
-      "icon": "src/assets/logo.jpg"
+      "icon": "src/assets/android-chrome-512x512.png"
     }
   }
 }
