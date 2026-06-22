@@ -1,7 +1,7 @@
 {
-  "name": "stock-management-font",
+  "name": "cyuzuzo",
   "version": "1.0.0",
-  "description": "Stock Management Font",
+  "description": "Cyuzuzo",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
@@ -41,8 +41,8 @@
     "vite-plugin-electron-renderer": "^0.14.5"
   },
   "build": {
-    "appId": "com.stock.management.font",
-    "productName": "Stock Management Font",
+    "appId": "com.cyuzuzo",
+    "productName": "Cyuzuzo",
     "directories": {
       "output": "release"
     },

@@ -1,5 +1,5 @@
-appId: com.stock.management.font
-productName: Stock Management Font
+appId: com.cyuzuzo
+productName: Cyuzuzo
 directories:
   output: release
 files:

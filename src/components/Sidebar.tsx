@@ -57,10 +57,10 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
       <div className="px-3 py-3 border-b border-gray-700 flex items-center gap-3 flex-shrink-0">
         <img 
           src={logoSrc} 
-          alt="Stock Management Font Logo" 
+          alt="Cyuzuzo Logo" 
           className="w-12 h-12 rounded-lg object-cover"
         />
-        <h1 className="text-base font-bold flex-1 truncate">Stock Font</h1>
+        <h1 className="text-base font-bold flex-1 truncate">Cyuzuzo</h1>
         <button
           onClick={toggleTheme}
           className="p-2 rounded-md hover:bg-white/10 transition-colors"

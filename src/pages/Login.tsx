@@ -37,7 +37,7 @@ export function Login() {
             className="w-32 h-32 rounded-lg object-cover"
           />
         </div>
-        <h1 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-white">Stock Management Font</h1>
+        <h1 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-white">Cyuzuzo</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
