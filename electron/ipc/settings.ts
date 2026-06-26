@@ -1,12 +1,15 @@
 
 import { ipcMain, dialog, app } from "electron";
-import { getPool } from "../db/database";
+import { getPool, saveDbConfig, resetPool, createPoolWithConfig, loadDbConfig } from "../db/database";
 import type { Settings, ApiResponse, UserRole } from "../../src/types";
+import { PoolConfig } from "pg";
+import fs from "fs/promises";
+import path from "path";
 
 export function registerSettingsHandlers(): void {
   ipcMain.handle("settings:get", async (): Promise<ApiResponse<Settings>> => {
     try {
-      const pool = getPool();
+      const pool = await getPool();
       const result = await pool.query("SELECT key, value FROM settings");
       const settings: Partial<Settings> = {};
       result.rows.forEach(row => {
@@ -32,7 +35,7 @@ export function registerSettingsHandlers(): void {
   ipcMain.handle(
     "settings:update",
     async (_, newSettings: Partial<Settings>, callerUserId: number): Promise<ApiResponse> => {
-      const pool = getPool();
+      const pool = await getPool();
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -76,10 +79,10 @@ export function registerSettingsHandlers(): void {
   );
 
   ipcMain.handle(
-    "settings:backupDatabase",
-    async (_, callerUserId: number): Promise<ApiResponse> => {
+    "settings:saveDbConfig",
+    async (_, config: PoolConfig, callerUserId: number): Promise<ApiResponse> => {
       try {
-        const pool = getPool();
+        const pool = await getPool();
         const callerResult = await pool.query("SELECT role FROM users WHERE id = $1", [callerUserId]);
         const caller = callerResult.rows[0] as { role: UserRole } | undefined;
         
@@ -87,8 +90,98 @@ export function registerSettingsHandlers(): void {
           return { success: false, error: "Unauthorized" };
         }
 
-        // Note: For PostgreSQL, you would typically use pg_dump for backups
-        // This is a simplified placeholder
+        await saveDbConfig(config);
+        await resetPool();
+        
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : "Failed to save DB config" };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    "settings:testConnection",
+    async (_, config?: PoolConfig): Promise<ApiResponse<{ success: boolean }>> => {
+      try {
+        const testConfig = config || await loadDbConfig();
+        const testPool = await createPoolWithConfig(testConfig);
+        await testPool.query("SELECT 1");
+        await testPool.end();
+        return { success: true, data: { success: true } };
+      } catch (error) {
+        return { 
+          success: true, 
+          data: { success: false }, 
+          error: error instanceof Error ? error.message : "Connection failed" 
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    "settings:getDbConfig",
+    async (_, callerUserId: number): Promise<ApiResponse<PoolConfig>> => {
+      try {
+        const pool = await getPool();
+        const callerResult = await pool.query("SELECT role FROM users WHERE id = $1", [callerUserId]);
+        const caller = callerResult.rows[0] as { role: UserRole } | undefined;
+        
+        if (!caller || caller.role !== "super_admin") {
+          return { success: false, error: "Unauthorized" };
+        }
+
+        const config = await loadDbConfig();
+        // Don't send password back? Or maybe do for UI? Let's send it for now
+        return { success: true, data: config };
+      } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : "Failed to get DB config" };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    "settings:backupDatabase",
+    async (_, callerUserId: number): Promise<ApiResponse> => {
+      try {
+        const pool = await getPool();
+        const callerResult = await pool.query("SELECT role FROM users WHERE id = $1", [callerUserId]);
+        const caller = callerResult.rows[0] as { role: UserRole } | undefined;
+        
+        if (!caller || caller.role !== "super_admin") {
+          return { success: false, error: "Unauthorized" };
+        }
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const defaultPath = path.join(app.getPath("documents"), `cyuzuzo-backup-${timestamp}.json`);
+        
+        const { canceled, filePath } = await dialog.showSaveDialog({
+          defaultPath,
+          filters: [{ name: "JSON Files", extensions: ["json"] }],
+        });
+
+        if (canceled || !filePath) {
+          return { success: false, error: "Backup canceled" };
+        }
+
+        // Query all required tables
+        const [productsResult, categoriesResult, stockResult, transactionsResult] = await Promise.all([
+          pool.query("SELECT * FROM products"),
+          pool.query("SELECT * FROM categories"),
+          pool.query("SELECT * FROM stock"),
+          pool.query("SELECT * FROM stock_transactions"),
+        ]);
+
+        const backupData = {
+          timestamp: new Date().toISOString(),
+          products: productsResult.rows,
+          categories: categoriesResult.rows,
+          stock: stockResult.rows,
+          stock_transactions: transactionsResult.rows,
+        };
+
+        await fs.writeFile(filePath, JSON.stringify(backupData, null, 2));
+
         return { success: true };
       } catch (error) {
         return { success: false, error: error instanceof Error ? error.message : "Failed to backup database" };

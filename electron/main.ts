@@ -12,8 +12,6 @@ import { registerReportHandlers } from "./ipc/reports";
 import { registerDashboardHandlers } from "./ipc/dashboard";
 import { registerSettingsHandlers } from "./ipc/settings";
 
-process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
-
 function createWindow() {
   const win = new BrowserWindow({
     width: 1400,

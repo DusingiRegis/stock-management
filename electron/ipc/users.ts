@@ -9,7 +9,7 @@ export function registerUserHandlers(): void {
     "users:getAll",
     async (_, callerUserId: number): Promise<ApiResponse<User[]>> => {
       try {
-        const pool = getPool();
+        const pool = await getPool();
         const callerResult = await pool.query("SELECT role FROM users WHERE id = $1", [callerUserId]);
         const caller = callerResult.rows[0] as { role: UserRole } | undefined;
         
@@ -29,7 +29,7 @@ export function registerUserHandlers(): void {
   ipcMain.handle(
     "users:add",
     async (_, payload: AddUserPayload, callerUserId: number): Promise<ApiResponse<User>> => {
-      const pool = getPool();
+      const pool = await getPool();
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -78,7 +78,7 @@ export function registerUserHandlers(): void {
   ipcMain.handle(
     "users:update",
     async (_, payload: UpdateUserPayload, callerUserId: number): Promise<ApiResponse<User>> => {
-      const pool = getPool();
+      const pool = await getPool();
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -151,7 +151,7 @@ export function registerUserHandlers(): void {
   ipcMain.handle(
     "users:delete",
     async (_, id: number, callerUserId: number): Promise<ApiResponse> => {
-      const pool = getPool();
+      const pool = await getPool();
       const client = await pool.connect();
       try {
         await client.query('BEGIN');

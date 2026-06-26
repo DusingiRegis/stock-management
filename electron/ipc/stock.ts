@@ -7,7 +7,7 @@ export function registerStockHandlers(): void {
   ipcMain.handle(
     "stock:addIn",
     async (_, payload: StockInPayload, callerUserId: number): Promise<ApiResponse<Transaction>> => {
-      const pool = getPool();
+      const pool = await getPool();
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -63,7 +63,7 @@ export function registerStockHandlers(): void {
   ipcMain.handle(
     "stock:addOut",
     async (_, payload: StockOutPayload, callerUserId: number): Promise<ApiResponse<Transaction>> => {
-      const pool = getPool();
+      const pool = await getPool();
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -127,7 +127,7 @@ export function registerStockHandlers(): void {
   ipcMain.handle(
     "stock:adjust",
     async (_, payload: AdjustStockPayload, callerUserId: number): Promise<ApiResponse<Transaction>> => {
-      const pool = getPool();
+      const pool = await getPool();
       const client = await pool.connect();
       try {
         await client.query('BEGIN');

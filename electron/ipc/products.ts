@@ -18,7 +18,7 @@ export function registerProductHandlers(): void {
       const offset = (page - 1) * pageSize;
 
       try {
-        const pool = getPool();
+        const pool = await getPool();
         let query = `
           SELECT 
             p.*,
@@ -76,7 +76,7 @@ export function registerProductHandlers(): void {
   ipcMain.handle(
     "products:add",
     async (_, payload: AddProductPayload, callerUserId: number): Promise<ApiResponse<Product>> => {
-      const pool = getPool();
+      const pool = await getPool();
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -132,7 +132,7 @@ export function registerProductHandlers(): void {
   ipcMain.handle(
     "products:update",
     async (_, payload: UpdateProductPayload, callerUserId: number): Promise<ApiResponse<Product>> => {
-      const pool = getPool();
+      const pool = await getPool();
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -171,7 +171,7 @@ export function registerProductHandlers(): void {
   ipcMain.handle(
     "products:delete",
     async (_, id: number, callerUserId: number): Promise<ApiResponse> => {
-      const pool = getPool();
+      const pool = await getPool();
       const client = await pool.connect();
       try {
         await client.query('BEGIN');

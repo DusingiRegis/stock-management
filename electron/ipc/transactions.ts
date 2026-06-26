@@ -8,7 +8,7 @@ export function registerTransactionHandlers(): void {
     "transactions:getAll",
     async (_, filter?: TransactionFilter): Promise<ApiResponse<Transaction[]>> => {
       try {
-        const pool = getPool();
+        const pool = await getPool();
         let query = `
           SELECT 
             t.*,
@@ -63,7 +63,7 @@ export function registerTransactionHandlers(): void {
 
   ipcMain.handle("transactions:getToday", async (): Promise<ApiResponse<Transaction[]>> => {
     try {
-      const pool = getPool();
+      const pool = await getPool();
       const today = new Date().toISOString().split("T")[0];
       const result = await pool.query(`
         SELECT 

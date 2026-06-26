@@ -6,7 +6,7 @@ import type { DashboardStats, Product, Transaction, ApiResponse } from "../../sr
 export function registerDashboardHandlers(): void {
   ipcMain.handle("dashboard:getStats", async (): Promise<ApiResponse<DashboardStats>> => {
     try {
-      const pool = getPool();
+      const pool = await getPool();
       const totalProductsResult = await pool.query("SELECT COUNT(*) as count FROM products");
       const totalStockResult = await pool.query("SELECT SUM(quantity) as count FROM stock");
       const today = new Date().toISOString().split("T")[0];
@@ -36,7 +36,7 @@ export function registerDashboardHandlers(): void {
 
   ipcMain.handle("dashboard:getLowStock", async (): Promise<ApiResponse<Product[]>> => {
     try {
-      const pool = getPool();
+      const pool = await getPool();
       const result = await pool.query(`
         SELECT 
           p.*,
@@ -57,7 +57,7 @@ export function registerDashboardHandlers(): void {
 
   ipcMain.handle("dashboard:getRecentTransactions", async (): Promise<ApiResponse<Transaction[]>> => {
     try {
-      const pool = getPool();
+      const pool = await getPool();
       const result = await pool.query(`
         SELECT 
           t.*,

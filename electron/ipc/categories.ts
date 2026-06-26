@@ -11,7 +11,7 @@ import type {
 export function registerCategoryHandlers(): void {
   ipcMain.handle("categories:getAll", async (): Promise<ApiResponse<Category[]>> => {
     try {
-      const pool = getPool();
+      const pool = await getPool();
       const result = await pool.query(`
         SELECT 
           c.*,
@@ -31,7 +31,7 @@ export function registerCategoryHandlers(): void {
   ipcMain.handle(
     "categories:add",
     async (_, payload: AddCategoryPayload, callerUserId: number): Promise<ApiResponse<Category>> => {
-      const pool = getPool();
+      const pool = await getPool();
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -70,7 +70,7 @@ export function registerCategoryHandlers(): void {
   ipcMain.handle(
     "categories:update",
     async (_, id: number, payload: AddCategoryPayload, callerUserId: number): Promise<ApiResponse<Category>> => {
-      const pool = getPool();
+      const pool = await getPool();
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -115,7 +115,7 @@ export function registerCategoryHandlers(): void {
   ipcMain.handle(
     "categories:delete",
     async (_, id: number, callerUserId: number): Promise<ApiResponse> => {
-      const pool = getPool();
+      const pool = await getPool();
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
