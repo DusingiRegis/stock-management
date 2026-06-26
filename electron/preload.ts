@@ -9,6 +9,7 @@ import type {
   AddUserPayload,
   UpdateUserPayload,
   ElectronAPI,
+  DbConfig,
 } from "../src/types";
 
 const electronAPI: ElectronAPI = {
@@ -67,6 +68,9 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.invoke("settings:update", settings, callerUserId),
     backupDatabase: (callerUserId: number) =>
       ipcRenderer.invoke("settings:backupDatabase", callerUserId),
+    getDbConfig: (callerUserId: number) => ipcRenderer.invoke("settings:getDbConfig", callerUserId),
+    saveDbConfig: (config: DbConfig, callerUserId: number) => ipcRenderer.invoke("settings:saveDbConfig", config, callerUserId),
+    testConnection: (config?: DbConfig) => ipcRenderer.invoke("settings:testConnection", config),
   },
 };
 

@@ -146,6 +146,18 @@ export interface DateRangeFilter {
   user_id?: number;
 }
 
+export interface DbConfig {
+  host: string;
+  port: number;
+  database: string;
+  user: string;
+  password: string;
+}
+
+export interface TestConnectionResult {
+  success: boolean;
+}
+
 export interface ElectronAPI {
   auth: {
     login: (payload: LoginPayload) => Promise<ApiResponse<AuthSession>>;
@@ -190,5 +202,8 @@ export interface ElectronAPI {
     get: () => Promise<ApiResponse<Settings>>;
     update: (settings: Partial<Settings>, callerUserId: number) => Promise<ApiResponse>;
     backupDatabase: (callerUserId: number) => Promise<ApiResponse>;
+    getDbConfig: (callerUserId: number) => Promise<ApiResponse<DbConfig>>;
+    saveDbConfig: (config: DbConfig, callerUserId: number) => Promise<ApiResponse>;
+    testConnection: (config?: DbConfig) => Promise<ApiResponse<TestConnectionResult>>;
   };
 }
