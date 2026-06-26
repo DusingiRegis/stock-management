@@ -42,6 +42,10 @@ export async function resetPool(): Promise<void> {
   }
 }
 
+export function forceSetPoolNull(): void {
+  pool = null;
+}
+
 export async function getPool(): Promise<Pool> {
   if (!pool) {
     const config = await loadDbConfig();

@@ -1,6 +1,6 @@
 
 import { ipcMain, dialog, app } from "electron";
-import { getPool, saveDbConfig, resetPool, createPoolWithConfig, loadDbConfig } from "../db/database";
+import { getPool, saveDbConfig, resetPool, createPoolWithConfig, loadDbConfig, forceSetPoolNull } from "../db/database";
 import type { Settings, ApiResponse, UserRole } from "../../src/types";
 import { PoolConfig } from "pg";
 import fs from "fs/promises";
@@ -91,6 +91,7 @@ export function registerSettingsHandlers(): void {
         }
 
         await saveDbConfig(config);
+        forceSetPoolNull();
         await resetPool();
         
         return { success: true };
