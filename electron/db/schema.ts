@@ -101,7 +101,7 @@ export async function initDatabase(): Promise<void> {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS stock_transactions (
         id SERIAL PRIMARY KEY,
-        product_id INTEGER NOT NULL REFERENCES products(id),
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
         type TEXT NOT NULL CHECK(type IN ('stock_in','stock_out','adjustment')),
         quantity INTEGER NOT NULL,
         amount NUMERIC,
@@ -179,6 +179,18 @@ export async function initDatabase(): Promise<void> {
 
     if (!auditColumns.includes('store_id')) {
       await pool.query('ALTER TABLE audit_log ADD COLUMN store_id INTEGER REFERENCES stores(id) ON DELETE CASCADE');
+    }
+
+    // Migrate stock_transactions to have ON DELETE CASCADE for product_id
+    try {
+      await pool.query(`
+        ALTER TABLE stock_transactions 
+        DROP CONSTRAINT IF EXISTS stock_transactions_product_id_fkey,
+        ADD CONSTRAINT stock_transactions_product_id_fkey 
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+      `);
+    } catch (migrationError) {
+      console.log("Stock transactions foreign key migration not needed:", migrationError);
     }
 
     // Create default store if it doesn't exist
