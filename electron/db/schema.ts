@@ -183,14 +183,38 @@ export async function initDatabase(): Promise<void> {
 
     // Migrate stock_transactions to have ON DELETE CASCADE for product_id
     try {
+      // First, check if the constraint exists and what it's named
+      const constraintCheck = await pool.query(`
+        SELECT constraint_name
+        FROM information_schema.table_constraints
+        WHERE table_name = 'stock_transactions'
+        AND constraint_type = 'FOREIGN KEY';
+      `);
+
+      console.log("Found constraints:", constraintCheck.rows);
+
+      // Drop any existing foreign key constraints on product_id
+      for (const row of constraintCheck.rows) {
+        if (row.constraint_name.includes('product')) {
+          try {
+            await pool.query(`ALTER TABLE stock_transactions DROP CONSTRAINT IF EXISTS ${row.constraint_name};`);
+            console.log(`Dropped constraint: ${row.constraint_name}`);
+          } catch (dropErr) {
+            console.log(`Couldn't drop constraint ${row.constraint_name}:`, dropErr);
+          }
+        }
+      }
+
+      // Now add the new constraint with ON DELETE CASCADE
       await pool.query(`
         ALTER TABLE stock_transactions 
-        DROP CONSTRAINT IF EXISTS stock_transactions_product_id_fkey,
         ADD CONSTRAINT stock_transactions_product_id_fkey 
         FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
       `);
+      
+      console.log("Successfully updated stock_transactions foreign key to ON DELETE CASCADE");
     } catch (migrationError) {
-      console.log("Stock transactions foreign key migration not needed:", migrationError);
+      console.log("Stock transactions foreign key migration issue:", migrationError);
     }
 
     // Create default store if it doesn't exist
