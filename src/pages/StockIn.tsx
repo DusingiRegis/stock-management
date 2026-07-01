@@ -1,7 +1,11 @@
+
 import { useEffect, useState } from "react";
 import { Table } from "../components/Table";
 import { LoadingSpinner } from "../components/LoadingSpinner";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { Trash2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useStore } from "../context/StoreContext";
 import { useToast } from "../context/ToastContext";
 import type { Product, Transaction, StockTransactionPayload } from "../types";
 
@@ -11,24 +15,32 @@ export function StockIn() {
   const [loading, setLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
+  const [amount, setAmount] = useState<string>("");
+  const [buyingPrice, setBuyingPrice] = useState<string>("");
   const [note, setNote] = useState<string>("");
+  const [confirmDelete, setConfirmDelete] = useState<Transaction | null>(null);
   const { session } = useAuth();
+  const { currentStore } = useStore();
   const { showToast } = useToast();
 
   useEffect(() => {
-    loadProducts();
-    loadTransactions();
-  }, []);
+    if (currentStore) {
+      loadProducts();
+      loadTransactions();
+    }
+  }, [currentStore]);
 
   const loadProducts = async () => {
-    const res = await window.api.products.getAll(1);
+    if (!currentStore) return;
+    const res = await window.api.products.getAll(1, undefined, currentStore.id);
     if (res.success) {
       setProducts(res.data?.data || []);
     }
   };
 
   const loadTransactions = async () => {
-    const res = await window.api.transactions.getToday();
+    if (!currentStore) return;
+    const res = await window.api.transactions.getToday(currentStore.id);
     if (res.success) {
       setTransactions((res.data || []).filter((t) => t.type === "stock_in"));
     }
@@ -36,7 +48,7 @@ export function StockIn() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session || !selectedProduct || !quantity) {
+    if (!session || !currentStore || !selectedProduct || !quantity) {
       showToast("error", "Please fill in all required fields");
       return;
     }
@@ -52,14 +64,18 @@ export function StockIn() {
       const payload: StockTransactionPayload = {
         product_id: parseInt(selectedProduct),
         quantity: qty,
+        amount: amount ? parseFloat(amount) : undefined,
+        buying_price: buyingPrice ? parseFloat(buyingPrice) : undefined,
         note: note || undefined,
       };
-      const res = await window.api.stock.addIn(payload, session.userId);
+      const res = await window.api.stock.addIn(payload, session.userId, currentStore.id);
       if (res.success) {
         const product = products.find((p) => p.id === parseInt(selectedProduct));
         showToast("success", `Added ${qty} ${product?.unit} to ${product?.name}`);
         setSelectedProduct("");
         setQuantity("");
+        setAmount("");
+        setBuyingPrice("");
         setNote("");
         loadProducts();
         loadTransactions();
@@ -73,12 +89,38 @@ export function StockIn() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!session || !confirmDelete) return;
+    const res = await window.api.transactions.delete(confirmDelete.id, session.userId);
+    if (res.success) {
+      showToast("success", "Transaction deleted");
+      setConfirmDelete(null);
+      loadTransactions();
+    } else {
+      showToast("error", res.error || "Failed to delete transaction");
+    }
+  };
+
   const columns = [
     { key: "created_at", label: "Time", render: (t: Transaction) => new Date(t.created_at).toLocaleTimeString() },
     { key: "product_name", label: "Product" },
     { key: "quantity", label: "Quantity" },
+    { key: "amount", label: "Amount" },
+    { key: "buying_price", label: "Buying Price" },
     { key: "note", label: "Note" },
     { key: "performed_by_username", label: "Added By" },
+    {
+      key: "actions",
+      label: "Actions",
+      render: (t: Transaction) => (
+        <button
+          onClick={() => setConfirmDelete(t)}
+          className="p-1 text-danger hover:bg-red-100 rounded"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      ),
+    },
   ];
 
   return (
@@ -120,6 +162,32 @@ export function StockIn() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Amount
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Buying Price
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={buyingPrice}
+                onChange={(e) => setBuyingPrice(e.target.value)}
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Note
               </label>
               <textarea
@@ -150,6 +218,14 @@ export function StockIn() {
           />
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={handleDelete}
+        title="Delete Transaction"
+        message="Are you sure you want to delete this transaction? This action cannot be undone."
+      />
     </div>
   );
 }

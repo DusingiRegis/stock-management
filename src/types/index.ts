@@ -1,8 +1,15 @@
+
 export type UserRole = "super_admin" | "admin" | "manager" | "staff";
 
 export type TransactionType = "stock_in" | "stock_out" | "adjustment";
 
 export type StockStatus = "in_stock" | "low_stock" | "out_of_stock";
+
+export interface Store {
+  id: number;
+  name: string;
+  created_at: string;
+}
 
 export interface User {
   id: number;
@@ -30,15 +37,18 @@ export interface Product {
   sku: string;
   category_id: number | null;
   category_name?: string;
-  unit: string;
+  cost: number;
   low_stock_threshold: number;
   current_stock?: number;
   status?: StockStatus;
+  unit: string;
+  store_id: number;
   created_at: string;
 }
 
 export interface Stock {
   product_id: number;
+  store_id: number;
   quantity: number;
   last_updated: string;
 }
@@ -49,9 +59,13 @@ export interface Transaction {
   product_name?: string;
   type: TransactionType;
   quantity: number;
+  amount?: number | null;
+  buying_price?: number | null;
+  selling_price?: number | null;
   note: string | null;
   performed_by: number;
   performed_by_username?: string;
+  store_id: number;
   created_at: string;
 }
 
@@ -61,6 +75,7 @@ export interface AuditLog {
   username?: string;
   action: string;
   details: string | null;
+  store_id: number;
   created_at: string;
 }
 
@@ -81,6 +96,9 @@ export interface DashboardStats {
   totalStockValue: number;
   lowStockCount: number;
   todayTransactions: number;
+  totalRevenue?: number;
+  totalCost?: number;
+  netProfit?: number;
 }
 
 export interface PaginatedResult<T> {
@@ -105,8 +123,10 @@ export interface AddProductPayload {
   name: string;
   sku?: string;
   category_id?: number;
-  unit: string;
+  cost: number;
   low_stock_threshold: number;
+  unit: string;
+  store_id: number;
 }
 
 export interface UpdateProductPayload extends AddProductPayload {
@@ -122,6 +142,9 @@ export interface StockTransactionPayload {
   product_id: number;
   quantity: number;
   note?: string;
+  amount?: number;
+  buying_price?: number;
+  selling_price?: number;
 }
 
 export interface AddUserPayload {
@@ -136,6 +159,14 @@ export interface UpdateUserPayload {
   role: UserRole;
   is_active: boolean;
   new_password?: string;
+}
+
+export interface TransactionFilter {
+  start_date?: string;
+  end_date?: string;
+  product_id?: number;
+  type?: TransactionType;
+  user_id?: number;
 }
 
 export interface DateRangeFilter {
@@ -158,13 +189,29 @@ export interface TestConnectionResult {
   success: boolean;
 }
 
+export interface AddStorePayload {
+  name: string;
+}
+
+export interface UpdateStorePayload {
+  id: number;
+  name: string;
+}
+
+export interface ProfitLossStats {
+  totalRevenue: number;
+  totalCost: number;
+  netProfit: number;
+  transactions: Transaction[];
+}
+
 export interface ElectronAPI {
   auth: {
     login: (payload: LoginPayload) => Promise<ApiResponse<AuthSession>>;
     logout: (userId: number) => Promise<ApiResponse>;
   };
   products: {
-    getAll: (page?: number, search?: string) => Promise<ApiResponse<PaginatedResult<Product>>>;
+    getAll: (page?: number, search?: string, storeId?: number) => Promise<ApiResponse<PaginatedResult<Product>>>;
     add: (payload: AddProductPayload, callerUserId: number) => Promise<ApiResponse<Product>>;
     update: (payload: UpdateProductPayload, callerUserId: number) => Promise<ApiResponse<Product>>;
     delete: (id: number, callerUserId: number) => Promise<ApiResponse>;
@@ -175,14 +222,21 @@ export interface ElectronAPI {
     update: (id: number, payload: AddCategoryPayload, callerUserId: number) => Promise<ApiResponse<Category>>;
     delete: (id: number, callerUserId: number) => Promise<ApiResponse>;
   };
+  stores: {
+    getAll: () => Promise<ApiResponse<Store[]>>;
+    add: (payload: AddStorePayload, callerUserId: number) => Promise<ApiResponse<Store>>;
+    update: (payload: UpdateStorePayload, callerUserId: number) => Promise<ApiResponse<Store>>;
+    delete: (id: number, callerUserId: number) => Promise<ApiResponse>;
+  };
   stock: {
-    addIn: (payload: StockTransactionPayload, callerUserId: number) => Promise<ApiResponse<Transaction>>;
-    addOut: (payload: StockTransactionPayload, callerUserId: number) => Promise<ApiResponse<Transaction>>;
-    adjust: (payload: StockTransactionPayload, callerUserId: number) => Promise<ApiResponse<Transaction>>;
+    addIn: (payload: StockTransactionPayload, callerUserId: number, storeId: number) => Promise<ApiResponse<Transaction>>;
+    addOut: (payload: StockTransactionPayload, callerUserId: number, storeId: number) => Promise<ApiResponse<Transaction>>;
+    adjust: (payload: StockTransactionPayload, callerUserId: number, storeId: number) => Promise<ApiResponse<Transaction>>;
   };
   transactions: {
-    getAll: (filter: DateRangeFilter) => Promise<ApiResponse<Transaction[]>>;
-    getToday: () => Promise<ApiResponse<Transaction[]>>;
+    getAll: (filter?: TransactionFilter, storeId?: number) => Promise<ApiResponse<Transaction[]>>;
+    getToday: (storeId?: number) => Promise<ApiResponse<Transaction[]>>;
+    delete: (id: number, callerUserId: number) => Promise<ApiResponse>;
   };
   users: {
     getAll: (callerUserId: number) => Promise<ApiResponse<User[]>>;
@@ -192,11 +246,12 @@ export interface ElectronAPI {
   };
   reports: {
     export: (data: Record<string, string>[], filename: string) => Promise<ApiResponse>;
+    getProfitLoss: (filter?: TransactionFilter, storeId?: number) => Promise<ApiResponse<ProfitLossStats>>;
   };
   dashboard: {
-    getStats: () => Promise<ApiResponse<DashboardStats>>;
-    getLowStock: () => Promise<ApiResponse<Product[]>>;
-    getRecentTransactions: () => Promise<ApiResponse<Transaction[]>>;
+    getStats: (storeId?: number) => Promise<ApiResponse<DashboardStats>>;
+    getLowStock: (storeId?: number) => Promise<ApiResponse<Product[]>>;
+    getRecentTransactions: (storeId?: number) => Promise<ApiResponse<Transaction[]>>;
   };
   settings: {
     get: () => Promise<ApiResponse<Settings>>;

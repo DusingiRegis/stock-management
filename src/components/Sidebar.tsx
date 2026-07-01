@@ -14,8 +14,10 @@ import {
   Sun,
   Moon,
   X,
+  Store,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useStore } from "../context/StoreContext";
 import { useTheme } from "../context/ThemeContext";
 import type { UserRole } from "../types";
 import logoSrc from "../assets/android-chrome-512x512.png";
@@ -35,6 +37,7 @@ const menuItems: MenuItem[] = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { path: "/products", label: "Products", icon: Package },
   { path: "/categories", label: "Categories", icon: Tags },
+  { path: "/stores", label: "Stores", icon: Store, roles: ["super_admin", "admin"] },
   { path: "/stock-in", label: "Stock In", icon: ArrowDownToLine },
   { path: "/stock-out", label: "Stock Out", icon: ArrowUpFromLine },
   { path: "/reports", label: "Reports", icon: FileText },
@@ -45,6 +48,7 @@ const menuItems: MenuItem[] = [
 export function Sidebar({ onCloseMobile }: SidebarProps) {
   const location = useLocation();
   const { session, logout, hasRole } = useAuth();
+  const { stores, currentStore, setCurrentStore } = useStore();
   const { theme, toggleTheme } = useTheme();
 
   const visibleMenuItems = menuItems.filter((item) =>
@@ -55,9 +59,9 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
     <aside className="w-56 bg-sidebar-light dark:bg-sidebar-dark h-full flex flex-col text-white overflow-y-auto">
       {/* Header with Theme Toggle */}
       <div className="px-3 py-3 border-b border-gray-700 flex items-center gap-3 flex-shrink-0">
-        <img 
-          src={logoSrc} 
-          alt="Cyuzuzo Logo" 
+        <img
+          src={logoSrc}
+          alt="Cyuzuzo Logo"
           className="w-12 h-12 rounded-lg object-cover"
         />
         <h1 className="text-base font-bold flex-1 truncate">Cyuzuzo</h1>
@@ -77,6 +81,27 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
           </button>
         )}
       </div>
+
+      {/* Store Switcher */}
+      {currentStore && (
+        <div className="px-3 py-3 border-b border-gray-700">
+          <label className="block text-xs text-gray-400 mb-1">Current Store</label>
+          <select
+            value={currentStore.id}
+            onChange={(e) => {
+              const store = stores.find(s => s.id === parseInt(e.target.value));
+              if (store) setCurrentStore(store);
+            }}
+            className="w-full px-2 py-1 bg-gray-800 border border-gray-600 rounded text-sm text-white focus:outline-none"
+          >
+            {stores.map(store => (
+              <option key={store.id} value={store.id}>
+                {store.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 px-2 py-2 space-y-0.5">

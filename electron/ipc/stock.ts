@@ -1,12 +1,12 @@
 
 import { ipcMain } from "electron";
 import { getPool } from "../db/database";
-import type { StockInPayload, StockOutPayload, AdjustStockPayload, Transaction, ApiResponse, UserRole } from "../../src/types";
+import type { StockTransactionPayload, Transaction, ApiResponse, UserRole } from "../../src/types";
 
 export function registerStockHandlers(): void {
   ipcMain.handle(
     "stock:addIn",
-    async (_, payload: StockInPayload, callerUserId: number): Promise<ApiResponse<Transaction>> => {
+    async (_, payload: StockTransactionPayload, callerUserId: number, storeId: number): Promise<ApiResponse<Transaction>> => {
       const pool = await getPool();
       const client = await pool.connect();
       try {
@@ -20,14 +20,37 @@ export function registerStockHandlers(): void {
           return { success: false, error: "Unauthorized" };
         }
 
-        await client.query(
-          "UPDATE stock SET quantity = quantity + $1, last_updated = NOW() WHERE product_id = $2",
-          [payload.quantity, payload.product_id]
+        // Check if stock entry exists for this product and store
+        const stockCheck = await client.query(
+          "SELECT quantity FROM stock WHERE product_id = $1 AND store_id = $2",
+          [payload.product_id, storeId]
         );
+        
+        if (stockCheck.rows.length === 0) {
+          await client.query(
+            "INSERT INTO stock (product_id, store_id, quantity, last_updated) VALUES ($1, $2, $3, NOW())",
+            [payload.product_id, storeId, payload.quantity]
+          );
+        } else {
+          await client.query(
+            "UPDATE stock SET quantity = quantity + $1, last_updated = NOW() WHERE product_id = $2 AND store_id = $3",
+            [payload.quantity, payload.product_id, storeId]
+          );
+        }
 
         const insertResult = await client.query(
-          "INSERT INTO stock_transactions (product_id, type, quantity, note, performed_by) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-          [payload.product_id, "stock_in", payload.quantity, payload.note || null, callerUserId]
+          "INSERT INTO stock_transactions (product_id, type, quantity, amount, buying_price, selling_price, note, performed_by, store_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
+          [
+            payload.product_id, 
+            "stock_in", 
+            payload.quantity, 
+            payload.amount || null, 
+            payload.buying_price || null, 
+            payload.selling_price || null,
+            payload.note || null, 
+            callerUserId,
+            storeId
+          ]
         );
         const transactionId = insertResult.rows[0].id;
 
@@ -44,8 +67,8 @@ export function registerStockHandlers(): void {
         const transaction = transactionResult.rows[0];
 
         await client.query(
-          "INSERT INTO audit_log (user_id, action, details) VALUES ($1, $2, $3)",
-          [callerUserId, "STOCK_IN", `Added ${payload.quantity} units to product id ${payload.product_id}`]
+          "INSERT INTO audit_log (user_id, action, details, store_id) VALUES ($1, $2, $3, $4)",
+          [callerUserId, "STOCK_IN", `Added ${payload.quantity} units to product id ${payload.product_id}`, storeId]
         );
 
         await client.query('COMMIT');
@@ -62,7 +85,7 @@ export function registerStockHandlers(): void {
 
   ipcMain.handle(
     "stock:addOut",
-    async (_, payload: StockOutPayload, callerUserId: number): Promise<ApiResponse<Transaction>> => {
+    async (_, payload: StockTransactionPayload, callerUserId: number, storeId: number): Promise<ApiResponse<Transaction>> => {
       const pool = await getPool();
       const client = await pool.connect();
       try {
@@ -76,7 +99,10 @@ export function registerStockHandlers(): void {
           return { success: false, error: "Unauthorized" };
         }
 
-        const stockResult = await client.query("SELECT quantity FROM stock WHERE product_id = $1", [payload.product_id]);
+        const stockResult = await client.query(
+          "SELECT quantity FROM stock WHERE product_id = $1 AND store_id = $2",
+          [payload.product_id, storeId]
+        );
         const stock = stockResult.rows[0];
 
         if (!stock || stock.quantity < payload.quantity) {
@@ -85,13 +111,23 @@ export function registerStockHandlers(): void {
         }
 
         await client.query(
-          "UPDATE stock SET quantity = quantity - $1, last_updated = NOW() WHERE product_id = $2",
-          [payload.quantity, payload.product_id]
+          "UPDATE stock SET quantity = quantity - $1, last_updated = NOW() WHERE product_id = $2 AND store_id = $3",
+          [payload.quantity, payload.product_id, storeId]
         );
 
         const insertResult = await client.query(
-          "INSERT INTO stock_transactions (product_id, type, quantity, note, performed_by) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-          [payload.product_id, "stock_out", payload.quantity, payload.note || null, callerUserId]
+          "INSERT INTO stock_transactions (product_id, type, quantity, amount, buying_price, selling_price, note, performed_by, store_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
+          [
+            payload.product_id, 
+            "stock_out", 
+            payload.quantity, 
+            payload.amount || null, 
+            payload.buying_price || null, 
+            payload.selling_price || null,
+            payload.note || null, 
+            callerUserId,
+            storeId
+          ]
         );
         const transactionId = insertResult.rows[0].id;
 
@@ -108,8 +144,8 @@ export function registerStockHandlers(): void {
         const transaction = transactionResult.rows[0];
 
         await client.query(
-          "INSERT INTO audit_log (user_id, action, details) VALUES ($1, $2, $3)",
-          [callerUserId, "STOCK_OUT", `Removed ${payload.quantity} units from product id ${payload.product_id}`]
+          "INSERT INTO audit_log (user_id, action, details, store_id) VALUES ($1, $2, $3, $4)",
+          [callerUserId, "STOCK_OUT", `Removed ${payload.quantity} units from product id ${payload.product_id}`, storeId]
         );
 
         await client.query('COMMIT');
@@ -126,7 +162,7 @@ export function registerStockHandlers(): void {
 
   ipcMain.handle(
     "stock:adjust",
-    async (_, payload: AdjustStockPayload, callerUserId: number): Promise<ApiResponse<Transaction>> => {
+    async (_, payload: StockTransactionPayload, callerUserId: number, storeId: number): Promise<ApiResponse<Transaction>> => {
       const pool = await getPool();
       const client = await pool.connect();
       try {
@@ -140,14 +176,37 @@ export function registerStockHandlers(): void {
           return { success: false, error: "Unauthorized" };
         }
 
-        await client.query(
-          "UPDATE stock SET quantity = $1, last_updated = NOW() WHERE product_id = $2",
-          [payload.quantity, payload.product_id]
+        // Check if stock entry exists for this product and store
+        const stockCheck = await client.query(
+          "SELECT quantity FROM stock WHERE product_id = $1 AND store_id = $2",
+          [payload.product_id, storeId]
         );
+        
+        if (stockCheck.rows.length === 0) {
+          await client.query(
+            "INSERT INTO stock (product_id, store_id, quantity, last_updated) VALUES ($1, $2, $3, NOW())",
+            [payload.product_id, storeId, payload.quantity]
+          );
+        } else {
+          await client.query(
+            "UPDATE stock SET quantity = $1, last_updated = NOW() WHERE product_id = $2 AND store_id = $3",
+            [payload.quantity, payload.product_id, storeId]
+          );
+        }
 
         const insertResult = await client.query(
-          "INSERT INTO stock_transactions (product_id, type, quantity, note, performed_by) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-          [payload.product_id, "adjustment", payload.quantity, payload.note || null, callerUserId]
+          "INSERT INTO stock_transactions (product_id, type, quantity, amount, buying_price, selling_price, note, performed_by, store_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
+          [
+            payload.product_id, 
+            "adjustment", 
+            payload.quantity, 
+            payload.amount || null, 
+            payload.buying_price || null, 
+            payload.selling_price || null,
+            payload.note || null, 
+            callerUserId,
+            storeId
+          ]
         );
         const transactionId = insertResult.rows[0].id;
 
@@ -164,8 +223,8 @@ export function registerStockHandlers(): void {
         const transaction = transactionResult.rows[0];
 
         await client.query(
-          "INSERT INTO audit_log (user_id, action, details) VALUES ($1, $2, $3)",
-          [callerUserId, "STOCK_ADJUST", `Adjusted product id ${payload.product_id} to ${payload.quantity} units`]
+          "INSERT INTO audit_log (user_id, action, details, store_id) VALUES ($1, $2, $3, $4)",
+          [callerUserId, "STOCK_ADJUST", `Adjusted product id ${payload.product_id} to ${payload.quantity} units`, storeId]
         );
 
         await client.query('COMMIT');

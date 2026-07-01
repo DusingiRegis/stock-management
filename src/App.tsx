@@ -1,6 +1,7 @@
 
 import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { StoreProvider } from "./context/StoreContext";
 import { ToastProvider } from "./context/ToastContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { Sidebar } from "./components/Sidebar";
@@ -9,6 +10,7 @@ import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { Products } from "./pages/Products";
 import { Categories } from "./pages/Categories";
+import { Stores } from "./pages/Stores";
 import { StockIn } from "./pages/StockIn";
 import { StockOut } from "./pages/StockOut";
 import { Reports } from "./pages/Reports";
@@ -30,12 +32,12 @@ function AppContent() {
     <div className="flex h-full w-full">
       {/* Mobile Sidebar Overlay */}
       {isMobileSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={() => setIsMobileSidebarOpen(false)}
         />
       )}
-      
+
       {/* Sidebar */}
       <div className={`fixed md:static inset-y-0 left-0 z-50 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-200 ease-in-out`}>
         <Sidebar onCloseMobile={() => setIsMobileSidebarOpen(false)} />
@@ -62,6 +64,7 @@ function AppContent() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/products" element={<Products />} />
             <Route path="/categories" element={<Categories />} />
+            <Route path="/stores" element={<Stores />} />
             <Route path="/stock-in" element={<StockIn />} />
             <Route path="/stock-out" element={<StockOut />} />
             <Route path="/reports" element={<Reports />} />
@@ -92,11 +95,13 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <ToastProvider>
-          <Router>
-            <AppContent />
-          </Router>
-        </ToastProvider>
+        <StoreProvider>
+          <ToastProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </ToastProvider>
+        </StoreProvider>
       </AuthProvider>
     </ThemeProvider>
   );

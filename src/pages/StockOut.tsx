@@ -1,7 +1,11 @@
+
 import { useEffect, useState } from "react";
 import { Table } from "../components/Table";
 import { LoadingSpinner } from "../components/LoadingSpinner";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { Trash2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useStore } from "../context/StoreContext";
 import { useToast } from "../context/ToastContext";
 import type { Product, Transaction, StockTransactionPayload } from "../types";
 
@@ -11,36 +15,44 @@ export function StockOut() {
   const [loading, setLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
+  const [amount, setAmount] = useState<string>("");
+  const [sellingPrice, setSellingPrice] = useState<string>("");
   const [note, setNote] = useState<string>("");
+  const [confirmDelete, setConfirmDelete] = useState<Transaction | null>(null);
   const { session } = useAuth();
+  const { currentStore } = useStore();
   const { showToast } = useToast();
 
+  const selectedProductData = products.find((p) => p.id === parseInt(selectedProduct));
+  const qty = parseInt(quantity);
+  const isQtyValid = selectedProductData && qty > 0 && qty <= (selectedProductData.current_stock || 0);
+
   useEffect(() => {
-    loadProducts();
-    loadTransactions();
-  }, []);
+    if (currentStore) {
+      loadProducts();
+      loadTransactions();
+    }
+  }, [currentStore]);
 
   const loadProducts = async () => {
-    const res = await window.api.products.getAll(1);
+    if (!currentStore) return;
+    const res = await window.api.products.getAll(1, undefined, currentStore.id);
     if (res.success) {
       setProducts(res.data?.data || []);
     }
   };
 
   const loadTransactions = async () => {
-    const res = await window.api.transactions.getToday();
+    if (!currentStore) return;
+    const res = await window.api.transactions.getToday(currentStore.id);
     if (res.success) {
       setTransactions((res.data || []).filter((t) => t.type === "stock_out"));
     }
   };
 
-  const selectedProductData = products.find((p) => p.id === parseInt(selectedProduct));
-  const qty = parseInt(quantity);
-  const isQtyValid = selectedProductData && qty > 0 && qty <= (selectedProductData.current_stock || 0);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session || !selectedProduct || !quantity) {
+    if (!session || !currentStore || !selectedProduct || !quantity) {
       showToast("error", "Please fill in all required fields");
       return;
     }
@@ -55,9 +67,11 @@ export function StockOut() {
       const payload: StockTransactionPayload = {
         product_id: parseInt(selectedProduct),
         quantity: qty,
+        amount: amount ? parseFloat(amount) : undefined,
+        selling_price: sellingPrice ? parseFloat(sellingPrice) : undefined,
         note: note || undefined,
       };
-      const res = await window.api.stock.addOut(payload, session.userId);
+      const res = await window.api.stock.addOut(payload, session.userId, currentStore.id);
       if (res.success) {
         const product = products.find((p) => p.id === parseInt(selectedProduct));
         const newStock = (product?.current_stock || 0) - qty;
@@ -67,6 +81,8 @@ export function StockOut() {
         }
         setSelectedProduct("");
         setQuantity("");
+        setAmount("");
+        setSellingPrice("");
         setNote("");
         loadProducts();
         loadTransactions();
@@ -80,12 +96,38 @@ export function StockOut() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!session || !confirmDelete) return;
+    const res = await window.api.transactions.delete(confirmDelete.id, session.userId);
+    if (res.success) {
+      showToast("success", "Transaction deleted");
+      setConfirmDelete(null);
+      loadTransactions();
+    } else {
+      showToast("error", res.error || "Failed to delete transaction");
+    }
+  };
+
   const columns = [
     { key: "created_at", label: "Time", render: (t: Transaction) => new Date(t.created_at).toLocaleTimeString() },
     { key: "product_name", label: "Product" },
     { key: "quantity", label: "Quantity" },
+    { key: "amount", label: "Amount" },
+    { key: "selling_price", label: "Selling Price" },
     { key: "note", label: "Note" },
     { key: "performed_by_username", label: "Removed By" },
+    {
+      key: "actions",
+      label: "Actions",
+      render: (t: Transaction) => (
+        <button
+          onClick={() => setConfirmDelete(t)}
+          className="p-1 text-danger hover:bg-red-100 rounded"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      ),
+    },
   ];
 
   return (
@@ -133,6 +175,32 @@ export function StockOut() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Amount
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Selling Price
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={sellingPrice}
+                onChange={(e) => setSellingPrice(e.target.value)}
+                className="w-full px-3 py-2 border dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Note
               </label>
               <textarea
@@ -163,6 +231,14 @@ export function StockOut() {
           />
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={handleDelete}
+        title="Delete Transaction"
+        message="Are you sure you want to delete this transaction? This action cannot be undone."
+      />
     </div>
   );
 }

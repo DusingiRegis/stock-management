@@ -5,6 +5,7 @@ import { initDatabase } from "./db/schema";
 import { registerAuthHandlers } from "./ipc/auth";
 import { registerProductHandlers } from "./ipc/products";
 import { registerCategoryHandlers } from "./ipc/categories";
+import { registerStoreHandlers } from "./ipc/stores";
 import { registerStockHandlers } from "./ipc/stock";
 import { registerTransactionHandlers } from "./ipc/transactions";
 import { registerUserHandlers } from "./ipc/users";
@@ -37,15 +38,16 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   await initDatabase();
-  registerAuthHandlers();
-  registerProductHandlers();
-  registerCategoryHandlers();
-  registerStockHandlers();
-  registerTransactionHandlers();
-  registerUserHandlers();
-  registerReportHandlers();
-  registerDashboardHandlers();
-  registerSettingsHandlers();
+    registerAuthHandlers();
+    registerProductHandlers();
+    registerCategoryHandlers();
+    registerStoreHandlers();
+    registerStockHandlers();
+    registerTransactionHandlers();
+    registerUserHandlers();
+    registerReportHandlers();
+    registerDashboardHandlers();
+    registerSettingsHandlers();
 
   createWindow();
 

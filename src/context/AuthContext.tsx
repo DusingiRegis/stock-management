@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
 import type { AuthSession, UserRole } from "../types";
@@ -15,6 +16,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
 
   const login = async (username: string, password: string): Promise<boolean> => {
+    if (!window.api) return false;
     const result = await window.api.auth.login({ username, password });
     if (result.success && result.data) {
       setSession(result.data);
@@ -24,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async (): Promise<void> => {
+    if (!window.api) return;
     if (session) {
       await window.api.auth.logout(session.userId);
     }
@@ -49,3 +52,4 @@ export function useAuth() {
   }
   return context;
 }
+

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import { Table } from "../components/Table";
@@ -5,9 +6,9 @@ import { Pagination } from "../components/Pagination";
 import { SearchInput } from "../components/SearchInput";
 import { Modal } from "../components/Modal";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { StatusBadge } from "../components/StatusBadge";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
+import { useStore } from "../context/StoreContext";
 import { useToast } from "../context/ToastContext";
 import type { Product, Category, AddProductPayload, UpdateProductPayload } from "../types";
 
@@ -25,21 +26,26 @@ export function Products() {
     name: "",
     sku: "",
     category_id: undefined,
-    unit: "pcs",
+    cost: 0,
     low_stock_threshold: 10,
+    unit: "Piece",
   });
   const { session, hasRole } = useAuth();
+  const { currentStore } = useStore();
   const { showToast } = useToast();
 
   useEffect(() => {
-    loadProducts();
+    if (currentStore) {
+      loadProducts();
+    }
     loadCategories();
-  }, [currentPage, search]);
+  }, [currentPage, search, currentStore]);
 
   const loadProducts = async () => {
+    if (!currentStore) return;
     try {
       setLoading(true);
-      const res = await window.api.products.getAll(currentPage, search || undefined);
+      const res = await window.api.products.getAll(currentPage, search || undefined, currentStore.id);
       if (res.success && res.data) {
         setProducts(res.data.data);
         setTotalPages(Math.ceil(res.data.total / 20));
@@ -59,7 +65,7 @@ export function Products() {
   };
 
   const handleSave = async () => {
-    if (!session) return;
+    if (!session || !currentStore) return;
     if (!formData.name || !formData.unit) {
       showToast("error", "Please fill in all required fields");
       return;
@@ -73,8 +79,10 @@ export function Products() {
           name: formData.name!,
           sku: formData.sku || editingProduct.sku,
           category_id: formData.category_id,
-          unit: formData.unit!,
+          cost: formData.cost || 0,
           low_stock_threshold: formData.low_stock_threshold || 10,
+          unit: formData.unit || "Piece",
+          store_id: currentStore.id,
         };
         res = await window.api.products.update(payload, session.userId);
       } else {
@@ -82,8 +90,10 @@ export function Products() {
           name: formData.name!,
           sku: formData.sku,
           category_id: formData.category_id,
-          unit: formData.unit!,
+          cost: formData.cost || 0,
           low_stock_threshold: formData.low_stock_threshold || 10,
+          unit: formData.unit || "Piece",
+          store_id: currentStore.id,
         };
         res = await window.api.products.add(payload, session.userId);
       }
@@ -118,8 +128,9 @@ export function Products() {
       name: "",
       sku: "",
       category_id: undefined,
-      unit: "pcs",
+      cost: 0,
       low_stock_threshold: 10,
+      unit: "Piece",
     });
     setEditingProduct(null);
   };
@@ -135,8 +146,9 @@ export function Products() {
       name: product.name,
       sku: product.sku,
       category_id: product.category_id ?? undefined,
-      unit: product.unit,
+      cost: product.cost,
       low_stock_threshold: product.low_stock_threshold,
+      unit: product.unit || "Piece",
     });
     setIsModalOpen(true);
   };
@@ -289,12 +301,12 @@ export function Products() {
               onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
               className="w-full px-3 py-2 border dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
-              <option value="pcs">pcs</option>
-              <option value="kg">kg</option>
-              <option value="liters">liters</option>
-              <option value="boxes">boxes</option>
-              <option value="bags">bags</option>
-              <option value="cartons">cartons</option>
+              <option value="Piece">Piece</option>
+              <option value="Pair">Pair</option>
+              <option value="Set">Set</option>
+              <option value="Pack">Pack</option>
+              <option value="Dozen">Dozen</option>
+              <option value="Bale">Bale</option>
             </select>
           </div>
           <div>
@@ -322,8 +334,18 @@ export function Products() {
         onClose={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
         title="Delete Product"
-        message={`Are you sure you want to delete "${confirmDelete?.name}"?`}
+        message={`Are you sure you want to delete "${confirmDelete?.name}"? This action cannot be undone.`}
       />
     </div>
   );
 }
+
+function StatusBadge({ status }: { status: string }) {
+  let color = "";
+  if (status === "in_stock") color = "bg-green-100 text-green-80";
+  else if (status === "low_stock") color = "bg-yellow-100 text-yellow-80";
+  else color = "bg-red-100 text-red-80";
+
+  return <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>{status.replace("_", " ")}</span>;
+}
+

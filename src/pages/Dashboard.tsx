@@ -1,9 +1,11 @@
+
 import { useEffect, useState } from "react";
-import { Package, AlertTriangle, TrendingUp, Archive } from "lucide-react";
+import { Package, AlertTriangle, TrendingUp, Archive, DollarSign } from "lucide-react";
 import { Table } from "../components/Table";
 import { StatusBadge } from "../components/StatusBadge";
 import type { DashboardStats, Product, Transaction } from "../types";
 import { useToast } from "../context/ToastContext";
+import { useStore } from "../context/StoreContext";
 
 export function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -11,18 +13,22 @@ export function Dashboard() {
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
+  const { currentStore } = useStore();
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (currentStore) {
+      loadData();
+    }
+  }, [currentStore]);
 
   const loadData = async () => {
+    if (!currentStore) return;
     try {
       setLoading(true);
       const [statsRes, lowStockRes, transactionsRes] = await Promise.all([
-        window.api.dashboard.getStats(),
-        window.api.dashboard.getLowStock(),
-        window.api.dashboard.getRecentTransactions(),
+        window.api.dashboard.getStats(currentStore.id),
+        window.api.dashboard.getLowStock(currentStore.id),
+        window.api.dashboard.getRecentTransactions(currentStore.id),
       ]);
 
       if (statsRes.success && statsRes.data) setStats(statsRes.data);
@@ -82,6 +88,7 @@ export function Dashboard() {
     { key: "product_name", label: "Product" },
     { key: "type", label: "Type", render: (t: Transaction) => <StatusBadge status={t.type} /> },
     { key: "quantity", label: "Quantity" },
+    { key: "amount", label: "Amount" },
     { key: "note", label: "Note" },
     { key: "performed_by_username", label: "By" },
   ];
@@ -140,6 +147,27 @@ export function Dashboard() {
           value={stats?.todayTransactions || 0}
           icon={TrendingUp}
           color="primary"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatCard
+          title="Total Revenue"
+          value={`$${(stats?.totalRevenue || 0).toFixed(2)}`}
+          icon={DollarSign}
+          color="success"
+        />
+        <StatCard
+          title="Total Cost"
+          value={`$${(stats?.totalCost || 0).toFixed(2)}`}
+          icon={DollarSign}
+          color="warning"
+        />
+        <StatCard
+          title="Net Profit/Loss"
+          value={`$${(stats?.netProfit || 0).toFixed(2)}`}
+          icon={DollarSign}
+          color={(stats?.netProfit || 0) >= 0 ? "success" : "danger"}
         />
       </div>
 
