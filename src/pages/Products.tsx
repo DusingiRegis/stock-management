@@ -42,15 +42,19 @@ export function Products() {
   }, [currentPage, search, currentStore]);
 
   const loadProducts = async () => {
+    console.log("Loading products - currentStore:", currentStore, "page:", currentPage, "search:", search);
     if (!currentStore) return;
     try {
       setLoading(true);
       const res = await window.api.products.getAll(currentPage, search || undefined, currentStore.id);
+      console.log("Products API response:", res);
       if (res.success && res.data) {
         setProducts(res.data.data);
         setTotalPages(Math.ceil(res.data.total / 20));
+        console.log("Updated products state:", res.data.data);
       }
     } catch (error) {
+      console.error("Load products error:", error);
       showToast("error", "Failed to load products");
     } finally {
       setLoading(false);
@@ -99,6 +103,7 @@ export function Products() {
       }
 
       if (res.success && res.data) {
+        const savedProduct = res.data;
         showToast("success", editingProduct ? "Product updated" : "Product added");
         setIsModalOpen(false);
         resetForm();
@@ -107,11 +112,11 @@ export function Products() {
         if (editingProduct) {
           // Update existing product in state
           setProducts(prev => prev.map(p => 
-            p.id === res.data!.id ? { ...p, ...res.data } : p
+            p.id === savedProduct.id ? { ...p, ...savedProduct } : p
           ));
         } else {
           // Add new product to state (at beginning)
-          setProducts(prev => [res.data, ...prev]);
+          setProducts(prev => [savedProduct, ...prev]);
         }
         
         // Then reload to get fresh data from server
