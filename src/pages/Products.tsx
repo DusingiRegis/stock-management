@@ -98,10 +98,23 @@ export function Products() {
         res = await window.api.products.add(payload, session.userId);
       }
 
-      if (res.success) {
+      if (res.success && res.data) {
         showToast("success", editingProduct ? "Product updated" : "Product added");
         setIsModalOpen(false);
         resetForm();
+        
+        // Update state immediately for better UX
+        if (editingProduct) {
+          // Update existing product in state
+          setProducts(prev => prev.map(p => 
+            p.id === res.data!.id ? { ...p, ...res.data } : p
+          ));
+        } else {
+          // Add new product to state (at beginning)
+          setProducts(prev => [res.data, ...prev]);
+        }
+        
+        // Then reload to get fresh data from server
         loadProducts();
       } else {
         showToast("error", res.error || "Failed to save product");
@@ -116,7 +129,12 @@ export function Products() {
     const res = await window.api.products.delete(confirmDelete.id, session.userId);
     if (res.success) {
       showToast("success", "Product deleted");
+      
+      // First remove from local state immediately for better UX
+      setProducts(prev => prev.filter(p => p.id !== confirmDelete.id));
       setConfirmDelete(null);
+      
+      // Then reload to make sure we have fresh data
       loadProducts();
     } else {
       showToast("error", res.error || "Failed to delete product");
